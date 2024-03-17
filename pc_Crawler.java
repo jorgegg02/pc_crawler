@@ -1,11 +1,12 @@
 import java.io.*;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.text.Normalizer;
 import java.util.regex.Pattern;
 
 public class pc_Crawler {
 
-    private static TreeMap<String, Integer> dic = new TreeMap<>();
+    private static TreeMap<String, Ocurrencia> dic = new TreeMap<>();
     
     private static TreeMap<String, List<String>> thesaurus = new TreeMap<>();
 
@@ -32,28 +33,36 @@ public class pc_Crawler {
                 }
             }
             else try {
-                FileReader fr = new FileReader(fichero);
+                FileReader fr = new FileReader(fichero
+                );
                 BufferedReader br = new BufferedReader(fr);
                 String linea;
                 while ((linea=br.readLine()) != null) {
+                    linea = linea.toLowerCase();
+                    // String[] tokens = linea.split("[^a-zñáéíóúü]", -1);
                     StringTokenizer st = new StringTokenizer(linea, separadores);
                     while (st.hasMoreTokens () ) {
-                       
+                    // for (String token : tokens) {
+                
+                        // String s = token.toLowerCase();
                         String s = st.nextToken().toLowerCase();
+                        System.out.println(s);
+                        s = Normalizer.normalize(s, Normalizer.Form.NFD);
                         System.out.println(s);
                         s = s.replaceAll("á", "a").replaceAll("é", "e").replaceAll("í", "i").replaceAll("ó", "o").replaceAll("ú", "u");
                         System.out.println(s);
-                        s = Normalizer.normalize(s, Normalizer.Form.NFD);
+                        // s = Pattern.compile("\\p{InCombiningDiacriticalMarks}+").matcher(s).replaceAll("");
                         System.out.println(s);
                         Object o = thesaurus.get(s);
                         System.out.println(o);
 
                         if (o != null){
                             o = dic.get(s);
-                            if (o == null) dic.put (s, new Integer (1));
+                            if (o == null) dic.put(s, new Ocurrencia( fichero.getAbsolutePath()));
                             else {
-                                Integer cont = (Integer) o;
-                                dic.put (s, new Integer (cont.intValue () + 1));
+                                
+                                Ocurrencia ocurrencia = dic.get(s);
+                                ocurrencia.addOcurrencia(fichero.getAbsolutePath());
                             }
                         }
                     }
@@ -62,6 +71,7 @@ public class pc_Crawler {
             }
             catch (Exception fnfe) {
                 System.out.println("ERROR. Fichero desaparecido en combate  ;-)");
+                System.out.println(fnfe);
             }
         } 
         // for (Map.Entry<String, Integer> entry : map.entrySet()) {
@@ -135,6 +145,7 @@ public class pc_Crawler {
         return  o;
     }
  
+    // --------------------MAIN--------------------
     public static void main(String[] args) {
 
         if (args.length < 1) {
@@ -163,24 +174,26 @@ public class pc_Crawler {
             salvarObjeto("diccionario.ser", dic);
         }
         
-        dic = (TreeMap <String, Integer>) leerObjeto("diccionario.ser");
+        dic = (TreeMap <String, Ocurrencia>) leerObjeto("diccionario.ser");
     
         // System.out.println(dic);
         // System.out.println(thesaurus);
 
         // Consultas
-        Scanner scanner = new Scanner(System.in);
+        Scanner scanner = new Scanner(System.in, "ISO-8859-1");
         while (true) {
             System.out.println("Introduce un término (o 'fin' para terminar):");
             String term = scanner.nextLine();
             if (term.equals("fin")) {
                 break;
             }
-            Integer count = dic.get(term);
-            if (count == null) {
+            Ocurrencia ocurrencia = dic.get(term);
+            if (ocurrencia == null) {
                 System.out.println("El término no se encuentra en el diccionario.");
             } else {
-                System.out.println("El término aparece " + count + " veces.");
+                System.out.println("El término aparece " + ocurrencia.getFrecuencia() + " veces en total.");
+                System.out.println("Aparece en los siguientes ficheros:");
+                System.out.println(ocurrencia.getArchivos());
             }
         }
         scanner.close();
