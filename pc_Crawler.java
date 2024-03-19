@@ -2,7 +2,6 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.text.Normalizer;
-import java.util.regex.Pattern;
 
 public class pc_Crawler {
 
@@ -33,8 +32,8 @@ public class pc_Crawler {
                 }
             }
             else try {
-                FileReader fr = new FileReader(fichero
-                );
+                FileReader fr = new FileReader(fichero);
+                
                 BufferedReader br = new BufferedReader(fr);
                 String linea;
                 while ((linea=br.readLine()) != null) {
@@ -80,7 +79,7 @@ public class pc_Crawler {
 
     }
 
-    public static void  crearThesauro () {
+    public static void  llenarThesauro () {
         
         File fichero = new File("theasaurus.txt");
     
@@ -120,6 +119,18 @@ public class pc_Crawler {
 
         // System.out.println(map);
 
+    public static void crearThesauro() {
+        // Comprobamos que existe un fichero llamado theasaurus.ser y si existe, cargamos el theasaurus usando readObject("theasaurus.ser", TreeMap(theasaurus)
+        // Si no existe, creamos un theasaurus y lo guardamos en el fichero theasaurus.ser
+        File f2 = new File("thesaurus.ser");
+        if (!f2.exists()) {
+            System.out.println("No existe el fichero theasaurus.ser");
+            llenarThesauro();
+            salvarObjeto("thesaurus.ser", thesaurus);
+        }
+
+        thesaurus = (TreeMap <String, List<String>>) leerObjeto("thesaurus.ser");
+    }
     
     public static void salvarObjeto (String fichero, Object o) {
         
@@ -144,40 +155,21 @@ public class pc_Crawler {
         }
         return  o;
     }
- 
-    // --------------------MAIN--------------------
-    public static void main(String[] args) {
 
-        if (args.length < 1) {
-            System.out.println("ERROR. Utilizar: >java ejercicio fichero_entrada");
-            return;
-        }
-
-        
-        // Comprobamos que existe un fichero llamado theasaurus.ser y si existe, cargamos el theasaurus usando readObject("theasaurus.ser", TreeMap(theasaurus)
-        // Si no existe, creamos un theasaurus y lo guardamos en el fichero theasaurus.ser
-        File f2 = new File("thesaurus.ser");
-        if (!f2.exists()) {
-            System.out.println("No existe el fichero theasaurus.ser");
-            crearThesauro();
-            salvarObjeto("thesaurus.ser", thesaurus);
-        }
-
-        thesaurus = (TreeMap <String, List<String>>) leerObjeto("thesaurus.ser");
-
+    public static void crearDiccionario(String arg) {
         // Comprobamos si existe un diccionario y si existe, cargamos el diccionario usando readObject("diccionario.ser", TreeMap(dic)
         // Si no existe, creamos un diccionario usando el crawler y lo guardamos en el fichero diccionario.ser
         File f = new File("diccionario.ser");
         if ( !f.exists()) {
             System.out.println("No existe el fichero diccionario.ser");
-            crawling(args[0], " ,.:;(){}!°?\t''%/|[]<=>&#+*$-¨^~");
+            crawling(arg, " ,.:;(){}!°?\t''%/|[]<=>&#+*$-¨^~");
             salvarObjeto("diccionario.ser", dic);
         }
         
         dic = (TreeMap <String, Ocurrencia>) leerObjeto("diccionario.ser");
-    
-        // System.out.println(dic);
-        // System.out.println(thesaurus);
+    }
+
+    public static void consultas(){
 
         // Consultas
         Scanner scanner = new Scanner(System.in, "ISO-8859-1");
@@ -197,5 +189,26 @@ public class pc_Crawler {
             }
         }
         scanner.close();
+    } 
+ 
+    // --------------------MAIN--------------------
+    public static void main(String[] args) {
+
+        if (args.length < 1) {
+            System.out.println("ERROR. Utilizar: >java ejercicio fichero_entrada");
+            return;
+        }
+
+        crearThesauro();
+        
+        crearDiccionario(args[0]);
+        
+    
+        // System.out.println(dic);
+        // System.out.println(thesaurus);
+
+        // Consultas
+        consultas();
+        
     }
 }
