@@ -48,7 +48,7 @@ public class pc_Crawler {
                         System.out.println(s);
                         s = Normalizer.normalize(s, Normalizer.Form.NFD);
                         System.out.println(s);
-                        s = s.replaceAll("á", "a").replaceAll("é", "e").replaceAll("í", "i").replaceAll("ó", "o").replaceAll("ú", "u");
+                        s = s.replaceAll("[á]", "[a]");//.replaceAll("é", "e").replaceAll("í", "i").replaceAll("ó", "o").replaceAll("ú", "u");
                         System.out.println(s);
                         // s = Pattern.compile("\\p{InCombiningDiacriticalMarks}+").matcher(s).replaceAll("");
                         System.out.println(s);
@@ -98,6 +98,7 @@ public class pc_Crawler {
                        
                         String s = st.nextToken().toLowerCase();
                         s = Normalizer.normalize(s, Normalizer.Form.NFD);
+                        s = s.replaceAll("[á]", "[a]").replaceAll("é", "e").replaceAll("í", "i").replaceAll("ó", "o").replaceAll("ú", "u");
 
                         sinonimos.add(s);
                     }
@@ -113,11 +114,6 @@ public class pc_Crawler {
                 System.out.println("ERROR. Thesauro.txt desaparecido en combate  ;-)");
             }
     } 
-        // for (Map.Entry<String, Integer> entry : map.entrySet()) {
-        //     System.out.println(entry.getKey() + " : " + entry.getValue());
-        // } 
-
-        // System.out.println(map);
 
     public static void crearThesauro() {
         // Comprobamos que existe un fichero llamado theasaurus.ser y si existe, cargamos el theasaurus usando readObject("theasaurus.ser", TreeMap(theasaurus)
@@ -141,7 +137,7 @@ public class pc_Crawler {
         catch (Exception e) { System.out.println(e); }
     }
 
-    @SuppressWarnings("unchecked")
+
     public static Object leerObjeto (String fichero) {
         Object o = null;
         try (FileInputStream fis = new FileInputStream(fichero);
@@ -172,7 +168,7 @@ public class pc_Crawler {
     public static void consultas(){
 
         // Consultas
-        Scanner scanner = new Scanner(System.in, "ISO-8859-1");
+        Scanner scanner = new Scanner(System.in, "UTF-8 ");//, //"ISO-8859-1");
         while (true) {
             System.out.println("Introduce un término (o 'fin' para terminar):");
             String term = scanner.nextLine();
@@ -203,11 +199,6 @@ public class pc_Crawler {
         
         crearDiccionario(args[0]);
         
-    
-        // System.out.println(dic);
-        // System.out.println(thesaurus);
-
-        // Consultas
         consultas();
         
     }

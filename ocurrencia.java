@@ -1,7 +1,7 @@
 import java.io.*;
 import java.util.*;
-import java.text.Normalizer;
-import java.util.regex.Pattern;
+
+
 
 
 public class Ocurrencia implements Serializable{ //clase que representa la ocurrencia de un término en el pc
@@ -23,13 +23,36 @@ public class Ocurrencia implements Serializable{ //clase que representa la ocurr
         frecuencia++;
     }
 
-    public String getArchivos() { //devuelve la lista de archivos en los que aparece el término
-        String lista = "";
-        for (String archivo : archivos.keySet()) {
-            lista += archivos.get(archivo) + " veces en " + archivo + "\n";
+    public String getArchivos() { //devuelve la lista de archivos en los que aparece el término rankeada
+        TreeMap<Integer, ArrayList<String>> listaOrdenada = new TreeMap<Integer, ArrayList<String>>();
+        for (String archivo : archivos.keySet() ) {
+            Integer cont = archivos.get(archivo);
+            
+            ArrayList<String> listaTerminosKveces = listaOrdenada.get(cont);
+            if (listaTerminosKveces == null) {
+                listaTerminosKveces = new ArrayList<String>();
+                listaTerminosKveces.add(archivo);
+                listaOrdenada.put(cont, listaTerminosKveces);
+            }
+            else {
+                listaTerminosKveces.add(archivo);
+            }   
+            
         }
+
+        String lista = "";
+        for (Integer cont : listaOrdenada.descendingKeySet()) {
+            ArrayList<String> listaTerminosKveces = listaOrdenada.get(cont);
+            for (String archivo : listaTerminosKveces) {
+                lista += "Aparece " + cont + " veces en " + archivo + "\n";
+            }
+        }
+
         return lista;
     }
+
+
+
     public int getFrecuencia() { //devuelve la frecuencia total del término
         return frecuencia;
     }
