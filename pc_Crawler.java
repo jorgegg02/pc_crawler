@@ -2,6 +2,10 @@ import java.io.*;
 import java.util.*;
 import java.text.Normalizer;
 import org.apache.tika.*;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.pdf.PDFParser;
+import org.apache.tika.sax.BodyContentHandler;
 
 
 /* 
@@ -27,6 +31,12 @@ public class pc_Crawler {
         Queue<File> queue = new LinkedList<>();
         
         File fichero = new File(puntoEntrada);
+
+        Tika tika = new Tika();
+
+        BodyContentHandler handler = new BodyContentHandler();
+        Metadata metadata = new Metadata();
+        ParseContext pcontext = new ParseContext();
     
         queue.add(new File(puntoEntrada));
     
@@ -44,44 +54,93 @@ public class pc_Crawler {
                     queue.addAll(Arrays.asList(listaFicheros));
                 }
             }
-            else try {
-                BufferedReader br = new BufferedReader(
-                    new InputStreamReader(new FileInputStream(fichero), "UTF-8")
-                );
-                String linea;
-                while ((linea=br.readLine()) != null) {
-                    linea = linea.toLowerCase();
-                    StringTokenizer st = new StringTokenizer(linea, separadores);
-                    while (st.hasMoreTokens () ) {
+            else if (fichero.getName().endsWith(".txt")) {
                 
-                        String s = st.nextToken().toLowerCase();
-                        s = Normalizer.normalize(s, Normalizer.Form.NFD);
-                        s = s.replaceAll("[^\\p{ASCII}]", DELIMITER);
+                try {
+                    BufferedReader br = new BufferedReader(
+                        new InputStreamReader(new FileInputStream(fichero), "UTF-8")
+                    );
+                    
+                    String linea;
+                    while ((linea=br.readLine()) != null) {
+                        linea = linea.toLowerCase();
+
                         
-                        System.out.println(s);
+                        StringTokenizer st = new StringTokenizer(linea, separadores);
+                        while (st.hasMoreTokens () ) {
+                    
+                            String s = st.nextToken().toLowerCase();
+                            s = normalizar(s);
+                            
+                            
 
-                        Object o = thesaurus.get(s);
-                        System.out.println(o);
+                            Object o = thesaurus.get(s);
+                            System.out.println(o);
 
-                        if (o != null){
-                            o = dic.get(s);
-                            if (o == null) dic.put(s, new Ocurrencia( fichero.getAbsolutePath()));
-                            else {
-                                
-                                Ocurrencia ocurrencia = dic.get(s);
-                                ocurrencia.addOcurrencia(fichero.getAbsolutePath());
+                            if (o != null){
+                                o = dic.get(s);
+                                if (o == null) dic.put(s, new Ocurrencia( fichero.getAbsolutePath()));
+                                else {
+                                    
+                                    Ocurrencia ocurrencia = dic.get(s);
+                                    ocurrencia.addOcurrencia(fichero.getAbsolutePath());
+                                }
                             }
                         }
                     }
+                    br.close();
                 }
-                br.close();
+                catch (Exception fnfe) {
+                    System.out.println("ERROR. Fichero desaparecido en combate  ;-)");
+                    System.out.println(fnfe);
+                }
+            
             }
-            catch (Exception fnfe) {
-                System.out.println("ERROR. Fichero desaparecido en combate  ;-)");
-                System.out.println(fnfe);
-            }
-        } 
 
+            else  try {
+                    String contenido = tika.parseToString(fichero);
+                    contenido = contenido.toLowerCase();
+                    System.out.println("Contenido: " + contenido);
+                    StringTokenizer st = new StringTokenizer(contenido, separadores);
+                        while (st.hasMoreTokens () ) {
+                    
+                            String s = st.nextToken().toLowerCase();
+                            System.out.println("Token: " + s + "\n")    ;
+                            s = normalizar(s);
+                            
+                            Object o = thesaurus.get(s);
+                            System.out.println("Objeto en thesauro " + o + "\n");
+
+                            if (o != null){
+                                o = dic.get(s);
+                                if (o == null) dic.put(s, new Ocurrencia( fichero.getAbsolutePath()));
+                                else {
+                                    
+                                    Ocurrencia ocurrencia = dic.get(s);
+                                    ocurrencia.addOcurrencia(fichero.getAbsolutePath());
+                                }
+                            }
+                        }
+                    }
+                catch (Exception fnfe) {
+                    System.out.println("ERROR. Fichero desaparecido en combate  ;-)");
+                    System.out.println(fnfe);
+                }
+
+
+            
+            
+        }
+
+    }
+
+    public static String normalizar (String s) {
+        // System.out.println(s);
+        // s = Normalizer.normalize(s, Normalizer.Form.NFD);
+        // s = s.replaceAll("[^\\p{ASCII}]", DELIMITER);
+        s = s.replaceAll("[á]", "a").replaceAll("[é]", "e").replaceAll("[í]", "i").replaceAll("[ó]", "o").replaceAll("[ú]", "u");
+        System.out.println("palabra normalizada " + s + "\n");
+        return s;
     }
 
     public static void  llenarThesauro () {
@@ -104,8 +163,7 @@ public class pc_Crawler {
                        
                         String s = st.nextToken().toLowerCase();
                         // Replace all accented characters with a scapecified replacement
-                        s = Normalizer.normalize(s, Normalizer.Form.NFD);
-                        s = s.replaceAll("[^\\p{ASCII}]", DELIMITER);
+                        s = normalizar(s);
 
                         sinonimos.add(s);
                     }
@@ -121,6 +179,24 @@ public class pc_Crawler {
                 System.out.println("ERROR. Thesauro.txt desaparecido en combate  ;-)");
             }
     } 
+
+    public static String leerPDF(String fichero) {
+
+        String contenido = "";
+        try {
+            PDFParser pdfparser = new PDFParser(); 
+            BodyContentHandler handler = new BodyContentHandler();
+            Metadata metadata = new Metadata();
+            FileInputStream inputstream = new FileInputStream(new File(fichero));
+            ParseContext pcontext = new ParseContext();
+            pdfparser.parse(inputstream, handler, metadata, pcontext);
+            contenido = handler.toString();
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+        return contenido;
+    } // leerPDF(
+
 
     public static void crearThesauro() {
         // Comprobamos que existe un fichero llamado theasaurus.ser y si existe, cargamos el theasaurus usando readObject("theasaurus.ser", TreeMap(theasaurus)
@@ -167,7 +243,7 @@ public class pc_Crawler {
         File f = new File("diccionario.ser");
         if ( !f.exists()) {
             System.out.println("No existe el fichero diccionario.ser");
-            crawling(arg, " ,.:;(){}!°?\t''%/|[]<=>&#+*$-¨^~");
+            crawling(arg, " ,.:;(){}!°?\t''%/|[]<=>&#+*$-¨^~\n");
             salvarObjeto("diccionario.ser", dic);
         }
         
@@ -187,11 +263,7 @@ public class pc_Crawler {
                     break;
                 }
 
-                System.out.println(term);
-                term = Normalizer.normalize(term, Normalizer.Form.NFD);
-                System.out.println(term);
-                term = term.replaceAll("[^\\p{ASCII}]+", DELIMITER);
-                System.out.println(term);
+                term = normalizar(term);
 
                 Ocurrencia ocurrencia = dic.get(term);
                 if (ocurrencia == null) {
