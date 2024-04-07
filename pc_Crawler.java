@@ -1,6 +1,18 @@
 import java.io.*;
 import java.util.*;
 import java.text.Normalizer;
+import org.apache.tika.*;
+
+
+/* 
+
+# Compilar
+javac -cp .;lib/* pc_Crawler.java
+
+# Ejecutar
+java -cp .;lib/* pc_Crawler prueba
+
+*/
 
 public class pc_Crawler {
 
