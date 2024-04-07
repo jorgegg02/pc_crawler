@@ -1,9 +1,10 @@
 import java.io.*;
-import java.nio.charset.Charset;
 import java.util.*;
 import java.text.Normalizer;
 
 public class pc_Crawler {
+
+    private static String DELIMITER = "/::/";
 
     private static TreeMap<String, Ocurrencia> dic = new TreeMap<>();
     
@@ -32,26 +33,21 @@ public class pc_Crawler {
                 }
             }
             else try {
-                FileReader fr = new FileReader(fichero);
-                
-                BufferedReader br = new BufferedReader(fr);
+                BufferedReader br = new BufferedReader(
+                    new InputStreamReader(new FileInputStream(fichero), "UTF-8")
+                );
                 String linea;
                 while ((linea=br.readLine()) != null) {
                     linea = linea.toLowerCase();
-                    // String[] tokens = linea.split("[^a-zñáéíóúü]", -1);
                     StringTokenizer st = new StringTokenizer(linea, separadores);
                     while (st.hasMoreTokens () ) {
-                    // for (String token : tokens) {
                 
-                        // String s = token.toLowerCase();
                         String s = st.nextToken().toLowerCase();
-                        System.out.println(s);
                         s = Normalizer.normalize(s, Normalizer.Form.NFD);
+                        s = s.replaceAll("[^\\p{ASCII}]", DELIMITER);
+                        
                         System.out.println(s);
-                        s = s.replaceAll("[á]", "[a]");//.replaceAll("é", "e").replaceAll("í", "i").replaceAll("ó", "o").replaceAll("ú", "u");
-                        System.out.println(s);
-                        // s = Pattern.compile("\\p{InCombiningDiacriticalMarks}+").matcher(s).replaceAll("");
-                        System.out.println(s);
+
                         Object o = thesaurus.get(s);
                         System.out.println(o);
 
@@ -73,21 +69,19 @@ public class pc_Crawler {
                 System.out.println(fnfe);
             }
         } 
-        // for (Map.Entry<String, Integer> entry : map.entrySet()) {
-        //     System.out.println(entry.getKey() + " : " + entry.getValue());
-        // } 
 
     }
 
     public static void  llenarThesauro () {
         
-        File fichero = new File("theasaurus.txt");
+            File fichero = new File("theasaurus.txt");
     
             System.out.println(fichero.getName());
    
             try {
-                FileReader fr = new FileReader(fichero);
-                BufferedReader br = new BufferedReader(fr);
+                BufferedReader br = new BufferedReader(
+                    new InputStreamReader(new FileInputStream(fichero), "UTF-8")
+                );
                 String linea;
                 while ((linea=br.readLine()) != null) {
 
@@ -97,8 +91,9 @@ public class pc_Crawler {
                     while (st.hasMoreTokens () ) {
                        
                         String s = st.nextToken().toLowerCase();
+                        // Replace all accented characters with a scapecified replacement
                         s = Normalizer.normalize(s, Normalizer.Form.NFD);
-                        s = s.replaceAll("[á]", "[a]").replaceAll("é", "e").replaceAll("í", "i").replaceAll("ó", "o").replaceAll("ú", "u");
+                        s = s.replaceAll("[^\\p{ASCII}]", DELIMITER);
 
                         sinonimos.add(s);
                     }
@@ -122,6 +117,9 @@ public class pc_Crawler {
         if (!f2.exists()) {
             System.out.println("No existe el fichero theasaurus.ser");
             llenarThesauro();
+            // for (Map.Entry<String, List<String>> entry : thesaurus.entrySet()) {
+            //     System.out.println(entry.getKey() + " => " + entry.getValue());
+            // }
             salvarObjeto("thesaurus.ser", thesaurus);
         }
 
@@ -129,15 +127,14 @@ public class pc_Crawler {
     }
     
     public static void salvarObjeto (String fichero, Object o) {
-        
         try (FileOutputStream fos = new FileOutputStream(fichero);
-             ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+            ObjectOutputStream oos = new ObjectOutputStream(fos)) {
             oos.writeObject(o);
         }
         catch (Exception e) { System.out.println(e); }
     }
 
-
+    @SuppressWarnings("unchecked")
     public static Object leerObjeto (String fichero) {
         Object o = null;
         try (FileInputStream fis = new FileInputStream(fichero);
@@ -167,25 +164,38 @@ public class pc_Crawler {
 
     public static void consultas(){
 
-        // Consultas
-        Scanner scanner = new Scanner(System.in, "UTF-8 ");//, //"ISO-8859-1");
-        while (true) {
-            System.out.println("Introduce un término (o 'fin' para terminar):");
-            String term = scanner.nextLine();
-            if (term.equals("fin")) {
-                break;
+        try {
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in, "ISO-8859-1"));
+        
+            while (true) {
+                System.out.println("Introduce un término (o 'fin' para terminar):");
+                String term = br.readLine().toLowerCase();
+                
+                if (term.equals("fin")) {
+                    break;
+                }
+
+                System.out.println(term);
+                term = Normalizer.normalize(term, Normalizer.Form.NFD);
+                System.out.println(term);
+                term = term.replaceAll("[^\\p{ASCII}]+", DELIMITER);
+                System.out.println(term);
+
+                Ocurrencia ocurrencia = dic.get(term);
+                if (ocurrencia == null) {
+                    System.out.println("El término no se encuentra en el diccionario.");
+                } else {
+                    System.out.println("El término aparece " + ocurrencia.getFrecuencia() + " veces en total.");
+                    System.out.println("Aparece en los siguientes ficheros:");
+                    System.out.println(ocurrencia.getArchivos());
+                }
             }
-            Ocurrencia ocurrencia = dic.get(term);
-            if (ocurrencia == null) {
-                System.out.println("El término no se encuentra en el diccionario.");
-            } else {
-                System.out.println("El término aparece " + ocurrencia.getFrecuencia() + " veces en total.");
-                System.out.println("Aparece en los siguientes ficheros:");
-                System.out.println(ocurrencia.getArchivos());
-            }
+            br.close();
+        } catch (Exception e) {
+            System.out.println(e);
         }
-        scanner.close();
-    } 
+        
+    }
  
     // --------------------MAIN--------------------
     public static void main(String[] args) {
@@ -199,6 +209,11 @@ public class pc_Crawler {
         
         crearDiccionario(args[0]);
         
+    
+        // System.out.println(dic);
+        // System.out.println(thesaurus);
+
+        // Consultas
         consultas();
         
     }
