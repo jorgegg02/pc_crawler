@@ -18,8 +18,8 @@ public class Ocurrencia implements Serializable{ //clase que representa la ocurr
     
     public void addOcurrencia(String archivo) { //añade una ocurrencia del término en el archivo
         Integer cont = archivos.get(archivo);
-        if (cont == null) archivos.put(archivo, new Integer(1));
-        else archivos.put(archivo, new Integer(cont.intValue() + 1));
+        if (cont == null) archivos.put(archivo, 1);
+        else archivos.put(archivo, cont.intValue() + 1);
         frecuencia++;
     }
 
@@ -68,7 +68,7 @@ public class Ocurrencia implements Serializable{ //clase que representa la ocurr
     }
 
     public void setURL(String archivo, int frec) { //establece la frecuencia del término en el archivo
-        archivos.put(archivo, new Integer(frec));
+        archivos.put(archivo, frec);
     }   
     
 }
