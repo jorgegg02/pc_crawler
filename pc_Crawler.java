@@ -8,8 +8,14 @@ class Crawler {
 
     private String TOKEN_SEPARATOR = " ,.:;(){}!°?\t''%/|[]<=>&#+*$-¨^~";
 
-    private TreeMap<String, Ocurrencia> terminos = new TreeMap<>();
-    private TreeMap<String, List<String>> thesaurus = new TreeMap<>();
+    private TreeMap<String, Ocurrencia> terminos;
+    private TreeMap<String, List<String>> thesauro;
+
+
+    public Crawler() {
+        terminos = new TreeMap<>();
+        thesauro = new TreeMap<>();
+    }
 
     private void salvarObjeto(String nombreFichero, Object objeto) {
         
@@ -49,10 +55,10 @@ class Crawler {
         return token;
     }
 
-    private TreeMap<String, List<String>> llenarThesaurus() {
+    private void llenarthesauro() {
         
-        File file = new File("thesaurus.txt");
-        TreeMap<String, List<String>> thesaurus = new TreeMap<>();
+        File file = new File("thesauro.txt");
+        
         try {
             BufferedReader br = new BufferedReader(new FileReader(file));
             String line;
@@ -65,7 +71,7 @@ class Crawler {
                     sinonimos.add(termino);
                 }
                 for (String termino : sinonimos) {
-                    thesaurus.put(termino, sinonimos);
+                    thesauro.put(termino, sinonimos);
                 }
 
                
@@ -75,29 +81,31 @@ class Crawler {
             e.printStackTrace();
         }
         
-        return thesaurus;
+        
     }
 
     @SuppressWarnings("unchecked")
-    private TreeMap<String, List<String>> cargarThesaurus() {
+    private void cargarthesauro() {
         
-        TreeMap<String, List<String>> thesaurus = null;
-        File file = new File("thesaurus.ser");
+        
+        File file = new File("thesauro.ser");
         if (!file.exists()) {
-            System.out.println("No existe el fichero theasaurus.ser, creando thesaurus...");
-            thesaurus = llenarThesaurus();
-            salvarObjeto("thesaurus.ser", thesaurus);
+            System.out.println("No existe el fichero theasaurus.ser, creando thesauro...");
+            llenarthesauro();
+            salvarObjeto("thesauro.ser", thesauro);
         }
-        Object obj = leerObjeto("thesaurus.ser");
-        if (obj instanceof TreeMap) {
-            thesaurus = (TreeMap<String, List<String>>) obj;
+        else {
+            Object obj = leerObjeto("thesauro.ser");
+            if (obj instanceof Map) {
+                thesauro = (TreeMap<String, List<String>>) obj;
+            }
         }
-        return thesaurus;
+        
     }
     
     private void insertarEnDiccionario (String termino, File file) {
-        // Obtenemos el término del thesaurus
-        List<String> sinonimos = thesaurus.get(termino);
+        // Obtenemos el término del thesauro
+        List<String> sinonimos = thesauro.get(termino);
         if (sinonimos != null) {
             // Si existen sinónimos o el propio término, obtenemos la ocurrencia
             Ocurrencia ocurrencia = terminos.get(termino);
@@ -151,32 +159,52 @@ class Crawler {
             file = cola.poll();
             if (file.isDirectory()) {
                 if (!file.exists() || !file.canRead()) {
-                    System.out.println("ERROR. No se puede leer el directorio " + file.getName());
+                    System.out.println("ERROR. No se puede leer el directorio " + file.getAbsolutePath());
                     continue;
                 }
                 File[] files = file.listFiles();
                 if (files != null) {
                     cola.addAll(Arrays.asList(files));
                 }
-            } else try {
-                if (
-                    file.getName().endsWith(".txt") ||
-                    file.getName().endsWith(".java") ||
-                    file.getName().endsWith(".c") ||
-                    file.getName().endsWith(".cpp")
-                ) {
-                    llenarTerminosTextPlain(file);
-                } else {
-                    llenarTerminosTika(file);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+            } else {
+            
+                    processFile(file);
+                
             }
         }
     }
+    
+    private void processFile(File file) {
+        try {
+            if (isSupportedFileType(file)) {
+                llenarTerminosTextPlain(file);
+            } else {
+                llenarTerminosTika(file);
+            }
+            
+        
+        } 
+        catch (FileNotFoundException e) {
+            System.out.println("ERROR.FileNotFoundException No se puede leer el fichero " + file.getAbsolutePath());
+            e.printStackTrace();
+        }
+        catch (IOException e) {
+            System.out.println("ERROR.IOException No se puede leer el fichero " + file.getAbsolutePath());
+            e.printStackTrace();
+        }
+        catch (Exception e) {
+            System.out.println("ERROR.Exception No se puede leer el fichero " + file.getAbsolutePath());
+            e.printStackTrace();
+        }
+    }
+    
+    private boolean isSupportedFileType(File file) {
+        String fileName = file.getName().toLowerCase();
+        return fileName.endsWith(".txt") || fileName.endsWith(".java") || fileName.endsWith(".c") || fileName.endsWith(".cpp");
+    }
 
     @SuppressWarnings("unchecked")
-    private TreeMap<String, Ocurrencia> cargarTerminos(String puntoEntrada) {
+    private TreeMap<String, Ocurrencia> cargarDiccionarioTerminos(String puntoEntrada) {
         File file = new File("diccionario.ser");
         if (!file.exists()) {
             System.out.println("No existe el fichero diccionario.ser, creando diccionario...");
@@ -193,6 +221,7 @@ class Crawler {
     private void consultas() {
         Scanner scanner = new Scanner(System.in);
         String end_word = "fin";
+        List<String> sinonimos = new ArrayList<>();
         while(true) {
             System.out.print("Introduce un término (o " + end_word + " para terminar): ");
             String userInput = scanner.nextLine();
@@ -208,22 +237,38 @@ class Crawler {
                 System.out.println("Aparece en los siguientes ficheros:");
                 System.out.println(ocurrencia.getArchivos());
             }
+            sinonimos = thesauro.get(termino);
+            if (sinonimos != null) {
+                
+                for (String sinonimo : sinonimos) {
+                    if (sinonimo.equals(termino)) {
+                        continue;
+                    }
+                    Ocurrencia ocurrenciaSinonimo = terminos.get(sinonimo);
+                    if (ocurrenciaSinonimo != null) {
+                        
+                        System.out.println("El término sinónimo " + sinonimo + " aparece " + ocurrenciaSinonimo.getFrecuencia() + " veces en los siguientes ficheros:");
+                        System.out.println(ocurrenciaSinonimo.getArchivos());
+                    }
+                }
+            }
+
         }
         scanner.close();
     }
 
     public void run(String puntoEntrada) {
         
-        // 1. Cargar thesaurus
-        this.thesaurus = cargarThesaurus();
+        // 1. Cargar thesauro
+        cargarthesauro();
 
-        if (this.thesaurus == null) {
-            System.out.println("ERROR. Thesaurus no cargado.");
+        if (this.thesauro == null) {
+            System.out.println("ERROR. thesauro no cargado.");
             System.exit(0);
         }
 
         // 2. Cargar diccionario de términos
-        cargarTerminos(puntoEntrada);
+        cargarDiccionarioTerminos(puntoEntrada);
 
         if (this.terminos == null) {
             System.out.println("ERROR. Diccionario de términos no cargado.");

@@ -35,3 +35,9 @@ adjudicar
 
 aduana
 aduana
+
+
+texto de prueba en un archivo de texto
+
+lo que precede
+priori antes
