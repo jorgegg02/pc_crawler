@@ -1,5 +1,6 @@
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import org.apache.tika.*;
 
@@ -56,33 +57,47 @@ class Crawler {
     }
 
     private void llenarthesauro() {
-        
+
         File file = new File("thesauro.txt");
-        
+    
         try {
             BufferedReader br = new BufferedReader(new FileReader(file));
             String line;
+    
             while ((line = br.readLine()) != null) {
+                if (line.isEmpty() || line.startsWith("#")) {
+                    continue;
+                }
                 List<String> sinonimos = new ArrayList<>();
                 StringTokenizer st = new StringTokenizer(line, TOKEN_SEPARATOR);
+                //creamos una lista con los sinonimos
                 while (st.hasMoreTokens()) {
                     String termino = st.nextToken();
                     termino = normalizeToken(termino);
                     sinonimos.add(termino);
                 }
-                for (String termino : sinonimos) {
-                    thesauro.put(termino, sinonimos);
+                
+                //añadimos los sinonimos al thesauro
+                for (String termino : new ArrayList<>(sinonimos)) {
+                    if (!thesauro.containsKey(termino)) {
+                        thesauro.put(termino, new ArrayList<>(sinonimos));
+                    } else {
+                        // Si ya existe el término, ampliamos los sinónimos con los nuevos
+                        List<String> sinonimosAntiguos = thesauro.get(termino);
+                        for (String nuevoSinonimo : sinonimos) {
+                            if (!sinonimosAntiguos.contains(nuevoSinonimo)) {
+                                sinonimosAntiguos.add(nuevoSinonimo);
+                            }
+                        }
+                    }
                 }
-
-               
             }
             br.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        
-        
     }
+    
 
     @SuppressWarnings("unchecked")
     private void cargarthesauro() {
@@ -218,10 +233,46 @@ class Crawler {
         return terminos;
     }
 
+    private void imprimirConsultaSinonimosTermino(String termino) {
+        List<String> sinonimos = new ArrayList<>();
+        sinonimos = thesauro.get(termino);
+            //ordenamos sinonimos en base a la frecuencia
+            sinonimos = sinonimos.stream().sorted((s1, s2) -> {
+                Ocurrencia o1 = terminos.get(s1);
+                Ocurrencia o2 = terminos.get(s2);
+                int frecuencia1 = o1 == null ? 0 : o1.getFrecuencia();
+                int frecuencia2 = o2 == null ? 0 : o2.getFrecuencia();
+                if (o1 == null && o2 == null || frecuencia1 == frecuencia2) {
+                    return 0;
+                }
+                if (o1 == null || frecuencia2 > frecuencia1) {
+                    return 1;
+                }
+                if (o2 == null || frecuencia2 < frecuencia1) {
+                    return -1;
+                }
+                return o2.getFrecuencia() - o1.getFrecuencia();
+            }).collect(Collectors.toList());
+            
+            if (sinonimos != null) {
+                
+                for (String sinonimo : sinonimos) {
+                    if (sinonimo.equals(termino)) {
+                        continue;
+                    }
+                    Ocurrencia ocurrenciaSinonimo = terminos.get(sinonimo);
+                    if (ocurrenciaSinonimo != null) {
+                        
+                        System.out.println("El término sinónimo \"" + sinonimo + "\" aparece " + ocurrenciaSinonimo.getFrecuencia() + " veces en los siguientes ficheros:");
+                        System.out.println(ocurrenciaSinonimo.getArchivos());
+                    }
+                }
+            }
+    }
     private void consultas() {
         Scanner scanner = new Scanner(System.in);
         String end_word = "fin";
-        List<String> sinonimos = new ArrayList<>();
+        
         while(true) {
             System.out.print("Introduce un término (o " + end_word + " para terminar): ");
             String userInput = scanner.nextLine();
@@ -233,25 +284,11 @@ class Crawler {
             if (ocurrencia == null) {
                 System.out.println("El término " + userInput + " no existe en el diccionario.");
             } else {
-                System.out.println("El término " + userInput + " aparece " + ocurrencia.getFrecuencia() + " veces en los siguientes ficheros:");
+                System.out.println("El término \"" + userInput + "\" aparece " + ocurrencia.getFrecuencia() + " veces en los siguientes ficheros:");
                 System.out.println("Aparece en los siguientes ficheros:");
                 System.out.println(ocurrencia.getArchivos());
             }
-            sinonimos = thesauro.get(termino);
-            if (sinonimos != null) {
-                
-                for (String sinonimo : sinonimos) {
-                    if (sinonimo.equals(termino)) {
-                        continue;
-                    }
-                    Ocurrencia ocurrenciaSinonimo = terminos.get(sinonimo);
-                    if (ocurrenciaSinonimo != null) {
-                        
-                        System.out.println("El término sinónimo " + sinonimo + " aparece " + ocurrenciaSinonimo.getFrecuencia() + " veces en los siguientes ficheros:");
-                        System.out.println(ocurrenciaSinonimo.getArchivos());
-                    }
-                }
-            }
+            imprimirConsultaSinonimosTermino(termino);
 
         }
         scanner.close();
