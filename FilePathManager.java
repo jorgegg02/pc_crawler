@@ -1,3 +1,4 @@
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -6,7 +7,7 @@ import java.util.Map;
 
 
 
-public class FilePathManager {
+public class FilePathManager implements Serializable {
     private ArrayList<String> filePaths;
 
     public FilePathManager() {

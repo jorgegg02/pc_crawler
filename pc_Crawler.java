@@ -4,6 +4,7 @@ import java.util.stream.Collectors;
 
 import org.apache.tika.*;
 import org.checkerframework.checker.units.qual.A;
+import org.checkerframework.checker.units.qual.s;
 
 
 class Crawler {
@@ -40,7 +41,7 @@ class Crawler {
         try (FileInputStream fis = new FileInputStream(fichero);
             ObjectInputStream ois = new ObjectInputStream(fis)) {
                 obj = ois.readObject();
-                if (!(obj instanceof Map)) {
+                if (!(obj instanceof Map || obj instanceof FilePathManager)) {
                 System.out.println("El objeto leído no es un Map<String, Object>");
             }
         } catch (Exception e) {
@@ -226,14 +227,23 @@ class Crawler {
     @SuppressWarnings("unchecked")
     private TreeMap<String, Ocurrencia> cargarDiccionarioTerminos(String puntoEntrada) {
         File file = new File("diccionario.ser");
-        if (!file.exists()) {
+        File file2 = new File("fat.ser");
+        if (!file.exists() || !file2.exists()) {
             System.out.println("No existe el fichero diccionario.ser, creando diccionario...");
             llenarTerminos(puntoEntrada);
             salvarObjeto("diccionario.ser", terminos);
+            salvarObjeto("fat.ser", fat);
         }
-        Object obj = leerObjeto("diccionario.ser");
-        if (obj instanceof TreeMap) {
-            terminos = (TreeMap<String, Ocurrencia>) obj;
+        else {
+            Object obj = leerObjeto("diccionario.ser");
+            if (obj instanceof TreeMap) {
+                terminos = (TreeMap<String, Ocurrencia>) obj;
+            }
+            obj = leerObjeto("fat.ser");
+            if (obj instanceof FilePathManager) {
+                fat = (FilePathManager) obj;
+            }
+            
         }
         return terminos;
     }
