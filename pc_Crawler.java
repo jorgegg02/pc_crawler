@@ -3,6 +3,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import org.apache.tika.*;
+import org.checkerframework.checker.units.qual.A;
 
 
 class Crawler {
@@ -11,11 +12,14 @@ class Crawler {
 
     private TreeMap<String, Ocurrencia> terminos;
     private TreeMap<String, List<String>> thesauro;
+    //File Allocation Table (FAT)
+    private FilePathManager fat;
 
 
     public Crawler() {
         terminos = new TreeMap<>();
         thesauro = new TreeMap<>();
+        fat = new FilePathManager();
     }
 
     private void salvarObjeto(String nombreFichero, Object objeto) {
@@ -124,12 +128,13 @@ class Crawler {
         if (sinonimos != null) {
             // Si existen sinónimos o el propio término, obtenemos la ocurrencia
             Ocurrencia ocurrencia = terminos.get(termino);
+            int id = fat.getFileIDorAdd(file.getAbsolutePath());
             if (ocurrencia == null) {
                 // Si no existe la ocurrencia, la creamos
-                terminos.put(termino, new Ocurrencia(file.getAbsolutePath()));
+                terminos.put(termino, new Ocurrencia(id));
             } else {
                 // Si existe la ocurrencia, la incrementamos
-                ocurrencia.addOcurrencia(file.getAbsolutePath());
+                ocurrencia.addOcurrencia(id);
             }
         }
     }
@@ -264,11 +269,132 @@ class Crawler {
                     if (ocurrenciaSinonimo != null) {
                         
                         System.out.println("El término sinónimo \"" + sinonimo + "\" aparece " + ocurrenciaSinonimo.getFrecuencia() + " veces en los siguientes ficheros:");
-                        System.out.println(ocurrenciaSinonimo.getArchivos());
+                        List<Integer[]> archivos = ocurrenciaSinonimo.getArchivos();
+                        for (Integer[] archivo : archivos) {
+                            System.out.println(fat.getFilePath(archivo[0]) + " " + archivo[1] + " veces");
+                        }
+                        System.out.println("");
                     }
                 }
             }
     }
+
+
+    private void consultaTerminoIndividual(String userInput) {
+        String termino = normalizeToken(userInput);
+        Ocurrencia ocurrencia = terminos.get(termino);
+            if (ocurrencia == null) {
+                System.out.println("El término " + userInput + " no existe en el diccionario.");
+            } else {
+                System.out.println("El término \"" + userInput + "\" aparece " + ocurrencia.getFrecuencia() + " veces en los siguientes ficheros:");
+                System.out.println("Aparece en los siguientes ficheros:");
+                List<Integer[]> archivos = ocurrencia.getArchivos();
+                for (Integer[] archivo : archivos) {
+                    System.out.println(fat.getFilePath(archivo[0]) + " " + archivo[1] + " veces");
+                }
+            }
+            System.out.println("\nSinónimos de " + userInput + ":\n\n");
+            imprimirConsultaSinonimosTermino(termino);
+    }
+
+    private void consultaTerminoCompuesto(String userInput) {
+        StringTokenizer st = new StringTokenizer(userInput, TOKEN_SEPARATOR);
+        TreeMap<String, List<Integer[]>> archivosYFrecuenciaPorTermino = new TreeMap<>();
+        //extraemos las ocurrencias de cada término y sus archivos
+        TreeMap<String, Set<Integer>> archivosPorTermino = new TreeMap<>();
+        while (st.hasMoreTokens()) {
+            String token = st.nextToken();
+            token = normalizeToken(token);
+            Ocurrencia ocurrencia = terminos.get(token);
+            if (ocurrencia != null) {
+                List<Integer[]> archivosFrecuencia = ocurrencia.getArchivos();
+                archivosYFrecuenciaPorTermino.put(token, archivosFrecuencia);
+                Set<Integer> conjuntoArchivos = new HashSet<>();
+                for (Integer[] archivo : archivosFrecuencia) {
+                    conjuntoArchivos.add(archivo[0]);
+                }
+                archivosPorTermino.put(token, conjuntoArchivos);
+            }
+        }
+        // hacemos la intersección de los archivos para todos los términos
+        Set<Integer> archivosComunes = new HashSet<>();
+        for (String termino : archivosPorTermino.keySet()) {
+            Set<Integer> archivos = archivosPorTermino.get(termino);
+            if (archivosComunes.isEmpty()) {
+                archivosComunes.addAll(archivos);
+            } else {
+                archivosComunes.retainAll(archivos);
+            }
+        }
+        List<Integer[]> archivosFrecuenciaComunes = new ArrayList<>();
+        for (Integer archivo : archivosComunes) {
+            int frecuencia = 0;
+            for (String termino : archivosYFrecuenciaPorTermino.keySet()) {
+                List<Integer[]> archivosFrecuencia = archivosYFrecuenciaPorTermino.get(termino);
+                for (Integer[] archivoFrecuencia : archivosFrecuencia) {
+                    if (archivoFrecuencia[0] == archivo) {
+                        frecuencia += archivoFrecuencia[1];
+                    }
+                }
+            }
+            archivosFrecuenciaComunes.add(new Integer[]{archivo, frecuencia});
+        }
+        //ordenamos los archivos por frecuencia
+        archivosFrecuenciaComunes = archivosFrecuenciaComunes.stream().sorted((a1, a2) -> {
+            if (a1[1] == a2[1]) {
+                return 0;
+            }
+            if (a1[1] < a2[1]) {
+                return 1;
+            }
+            return -1;
+        }).collect(Collectors.toList());
+
+        System.out.println("Los términos compuestos aparecen en los siguientes ficheros:");
+        for (Integer[] archivoFrecuencia : archivosFrecuenciaComunes) {
+            System.out.println(fat.getFilePath(archivoFrecuencia[0]) + " " + archivoFrecuencia[1] + " veces totales");
+            //aparicion de cada termino en el archivo
+            for (String termino : archivosYFrecuenciaPorTermino.keySet()) {
+                List<Integer[]> archivosFrecuencia = archivosYFrecuenciaPorTermino.get(termino);
+                for (Integer[] archivoFrecuenciaTermino : archivosFrecuencia) {
+                    if (archivoFrecuenciaTermino[0] == archivoFrecuencia[0]) {
+                        System.out.println(termino + " " + archivoFrecuenciaTermino[1] + " veces");
+                    }
+                }
+            }
+            System.out.println("");
+        }
+
+        //eliminamos archivos comunes de archivosyFrecuenciaPorTermino
+        for (String termino : archivosYFrecuenciaPorTermino.keySet()) {
+            List<Integer[]> archivosFrecuencia = archivosYFrecuenciaPorTermino.get(termino);
+            // por temas de concurrencia no podemos modificar la lista mientras la recorremos
+            List<Integer[]> eliminar = new ArrayList<>();
+            for (Integer[] archivoFrecuencia : archivosFrecuencia) {
+                if (archivosComunes.contains(archivoFrecuencia[0])) {
+                    eliminar.add(archivoFrecuencia);
+                }
+            }
+            archivosFrecuencia.removeAll(eliminar);
+        }
+        //mostramos los archivos que no son comunes
+        for (String termino : archivosYFrecuenciaPorTermino.keySet()) {
+            List<Integer[]> archivosFrecuencia = archivosYFrecuenciaPorTermino.get(termino);
+            if (!archivosFrecuencia.isEmpty()) {
+                System.out.println("El término " + termino + " aparece en los siguientes ficheros:");
+                for (Integer[] archivoFrecuencia : archivosFrecuencia) {
+                    System.out.println(fat.getFilePath(archivoFrecuencia[0]) + " " + archivoFrecuencia[1] + " veces");
+                }
+                System.out.println("");
+            }
+        }
+
+
+
+
+
+    }
+
     private void consultas() {
         Scanner scanner = new Scanner(System.in);
         String end_word = "fin";
@@ -276,19 +402,17 @@ class Crawler {
         while(true) {
             System.out.print("Introduce un término (o " + end_word + " para terminar): ");
             String userInput = scanner.nextLine();
+            System.out.println("El término introducido es: " + userInput);
             if (userInput.equals(end_word)) {
                 break;
             }
-            String termino = normalizeToken(userInput);
-            Ocurrencia ocurrencia = terminos.get(termino);
-            if (ocurrencia == null) {
-                System.out.println("El término " + userInput + " no existe en el diccionario.");
+            
+            if (userInput.contains(" ")) {
+                consultaTerminoCompuesto(userInput);
             } else {
-                System.out.println("El término \"" + userInput + "\" aparece " + ocurrencia.getFrecuencia() + " veces en los siguientes ficheros:");
-                System.out.println("Aparece en los siguientes ficheros:");
-                System.out.println(ocurrencia.getArchivos());
+                consultaTerminoIndividual(userInput);
             }
-            imprimirConsultaSinonimosTermino(termino);
+            
 
         }
         scanner.close();

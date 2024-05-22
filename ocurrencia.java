@@ -6,33 +6,35 @@ import java.util.*;
 
 public class Ocurrencia implements Serializable{ //clase que representa la ocurrencia de un término en el pc
 
-    private TreeMap<String, Integer> archivos; //frecuencia término por archivo
+    private TreeMap<Integer, Integer> archivos; //frecuencia término por archivo
     private int frecuencia; //frecuencia total del término
 
-    public Ocurrencia(String archivo) { //constructor
-        archivos = new TreeMap<String, Integer>();
+    public Ocurrencia(Integer idArchivo) { //constructor
+        archivos = new TreeMap<Integer, Integer>();
         frecuencia = 0;
-        addOcurrencia(archivo);
+        addOcurrencia(idArchivo);
     }
 
     
-    public void addOcurrencia(String archivo) { //añade una ocurrencia del término en el archivo
-        Integer cont = archivos.get(archivo);
-        if (cont == null) archivos.put(archivo, 1);
-        else archivos.put(archivo, cont.intValue() + 1);
+    public void addOcurrencia(Integer idArchivo) { //añade una ocurrencia del término en el archivo
+        Integer cont = archivos.get(idArchivo);
+        if (cont == null) archivos.put(idArchivo, 1);
+        else archivos.put(idArchivo, cont.intValue() + 1);
         frecuencia++;
     }
 
-    public String getArchivos() { //devuelve la lista de archivos en los que aparece el término rankeada
-        TreeMap<Integer, ArrayList<String>> listaOrdenada = new TreeMap<Integer, ArrayList<String>>();
-        for (String archivo : archivos.keySet() ) {
-            Integer cont = archivos.get(archivo);
+    // devuelve una lista de arreglos de enteros, donde cada arreglo tiene dos elementos: el id del archivo y la frecuencia del término en ese archivo
+    public List<Integer[]> getArchivos() { 
+        TreeMap<Integer, ArrayList<Integer>> listaOrdenada = new TreeMap<Integer, ArrayList<Integer>>();
+        //Creamos un treemap, la llave es la frecuencia de un término en un archivo y el valor es una lista de los archivos que tienen esa frecuencia
+        for (Integer archivo : archivos.keySet() ) {
+            Integer frencuenciaPorArchivo = archivos.get(archivo);
             
-            ArrayList<String> listaTerminosKveces = listaOrdenada.get(cont);
+            ArrayList<Integer> listaTerminosKveces = listaOrdenada.get(frencuenciaPorArchivo);
             if (listaTerminosKveces == null) {
-                listaTerminosKveces = new ArrayList<String>();
+                listaTerminosKveces = new ArrayList<Integer>();
                 listaTerminosKveces.add(archivo);
-                listaOrdenada.put(cont, listaTerminosKveces);
+                listaOrdenada.put(frencuenciaPorArchivo, listaTerminosKveces);
             }
             else {
                 listaTerminosKveces.add(archivo);
@@ -40,15 +42,17 @@ public class Ocurrencia implements Serializable{ //clase que representa la ocurr
             
         }
 
-        String lista = "";
-        for (Integer cont : listaOrdenada.descendingKeySet()) {
-            ArrayList<String> listaTerminosKveces = listaOrdenada.get(cont);
-            for (String archivo : listaTerminosKveces) {
-                lista += "Aparece " + cont + " veces en " + archivo + "\n";
+        List<Integer[]> listaArchivos = new ArrayList<Integer[]>();
+        //Para cada frecuencia (se recorre de mayor a menos) creamos la tupla [idArchivo, frecuencia]
+        //Cada frecuencia puede tener varios archivos, es decir, varios archivos tienen la misma frecuencia
+        for (Integer frecuencia : listaOrdenada.descendingKeySet()) {
+            ArrayList<Integer> listaTerminosKveces = listaOrdenada.get(frecuencia);
+            for (Integer archivo : listaTerminosKveces) {
+                listaArchivos.add(new Integer[]{archivo, frecuencia});
             }
         }
+        return listaArchivos;
 
-        return lista;
     }
 
 
@@ -57,18 +61,18 @@ public class Ocurrencia implements Serializable{ //clase que representa la ocurr
         return frecuencia;
     }
 
-     public void setFrecuencia(int frec) { //establece la frecuencia total del término
-        frecuencia = frec;
-    }
+    //  public void setFrecuencia(int frec) { //establece la frecuencia total del término
+    //     frecuencia = frec;
+    // }
 
-    public int getURL(String archivo) { //devuelve la frecuencia del término en el archivo
-        Integer cont = archivos.get(archivo);
+    public int getFrecuenciaArchivo(Integer idArchivo) { //devuelve la frecuencia del término en el archivo
+        Integer cont = archivos.get(idArchivo);
         if (cont == null) return 0;
         else return cont.intValue();
     }
 
-    public void setURL(String archivo, int frec) { //establece la frecuencia del término en el archivo
-        archivos.put(archivo, frec);
-    }   
+    // public void setFrecuenciaArchivo(Integer idArchivo, int frec) { //establece la frecuencia del término en el archivo
+    //     archivos.put(idArchivo, frec);
+    // }   
     
 }
